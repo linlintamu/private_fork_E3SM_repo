@@ -245,6 +245,15 @@
       <env name="FI_CXI_RX_MATCH_MODE">software</env>
       <env name="MPICH_COLL_SYNC">MPI_Bcast</env>
     </environment_variables>
+    <environment_variables compiler="gnu" mpilib="mpich">
+      <env name="ADIOS2_DIR">/global/cfs/cdirs/e3sm/3rdparty/adios2/2.8.3.patch/cray-mpich-8.1.15/gcc-11.2.0</env>
+    </environment_variables>
+    <environment_variables compiler="nvidia" mpilib="mpich">
+      <env name="ADIOS2_DIR">/global/cfs/cdirs/e3sm/3rdparty/adios2/2.8.3.patch/cray-mpich-8.1.15/nvidia-21.11</env>
+    </environment_variables>
+    <environment_variables compiler="amdclang" mpilib="mpich">
+      <env name="ADIOS2_DIR">/global/cfs/cdirs/e3sm/3rdparty/adios2/2.8.3.patch/cray-mpich-8.1.15/aocc-3.2.0</env>
+    </environment_variables>
     <resource_limits>
       <resource name="RLIMIT_STACK">-1</resource>
     </resource_limits>
@@ -371,6 +380,12 @@
     </environment_variables>
     <environment_variables compiler="nvidiagpu">
       <env name="MPICH_GPU_SUPPORT_ENABLED">1</env>
+    </environment_variables>
+    <environment_variables compiler="gnu.*" mpilib="mpich">
+      <env name="ADIOS2_DIR">/global/cfs/cdirs/e3sm/3rdparty/adios2/2.8.3.patch/cray-mpich-8.1.15/gcc-11.2.0</env>
+    </environment_variables>
+    <environment_variables compiler="nvidia.*" mpilib="mpich">
+      <env name="ADIOS2_DIR">/global/cfs/cdirs/e3sm/3rdparty/adios2/2.8.3.patch/cray-mpich-8.1.15/nvidia-21.11</env>
     </environment_variables>
     <resource_limits>
       <resource name="RLIMIT_STACK">-1</resource>
