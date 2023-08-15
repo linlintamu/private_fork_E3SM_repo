@@ -1113,7 +1113,7 @@
       <env name="OMP_PLACES">threads</env>
     </environment_variables>
     <environment_variables compiler="crayclang-scream" mpilib="mpich">
-      <env name="ADIOS2_DIR">/lustre/orion/cli115/world-shared/frontier/3rdparty/adios2/2.8.3.patch/cray-mpich-8.1.25/crayclang-scream-15.0.0</env>
+      <env name="ADIOS2_DIR">/lustre/orion/cli115/world-shared/frontier/3rdparty/adios2/2.9.1/cray-mpich-8.1.25/crayclang-scream-15.0.0</env>
     </environment_variables>
   </machine>
 
