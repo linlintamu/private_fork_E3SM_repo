@@ -211,7 +211,7 @@ void AtmosphereDriver::create_grids()
   if (m_case_t0<m_run_t0) {
     // Restarted run -> read geo data from restart file
     const auto& casename = ic_pl.get<std::string>("restart_casename");
-    auto filename = find_filename_in_rpointer (casename,true,m_atm_comm,m_run_t0);
+    auto filename = compute_model_restart_filename(casename,m_run_t0);
     gm_params.set("ic_filename", filename);
     m_atm_params.sublist("provenance").set("initial_conditions_file",filename);
   } else if (ic_pl.isParameter("Filename")) {
@@ -637,11 +637,6 @@ void AtmosphereDriver::initialize_output_managers () {
 
   auto& io_params = m_atm_params.sublist("Scorpio");
 
-  // IMPORTANT: create model restart OutputManager first! This OM will be in charge
-  // of creating rpointer.atm, while other OM's will simply append to it.
-  // If this assumption is not verified, we must always append to rpointer, which
-  // can make the rpointer file a bit confusing.
-
   // Check for model restart output
   ekat::ParameterList checkpoint_params;
   checkpoint_params.set("frequency_units",std::string("never"));
@@ -846,7 +841,7 @@ void AtmosphereDriver::restart_model ()
 
   // First, figure out the name of the netcdf file containing the restart data
   const auto& casename = m_atm_params.sublist("initial_conditions").get<std::string>("restart_casename");
-  auto filename = find_filename_in_rpointer (casename,true,m_atm_comm,m_run_t0);
+  auto filename = compute_model_restart_filename(casename,m_run_t0);
 
   m_atm_logger->info("    [EAMxx] Restart filename: " + filename);
 

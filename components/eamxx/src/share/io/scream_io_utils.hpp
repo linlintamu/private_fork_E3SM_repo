@@ -11,6 +11,12 @@
 namespace scream
 {
 
+enum IOFileType {
+  Output,
+  ModelRestart,
+  HistoryRestart
+};
+
 enum class OutputAvgType {
   Instant,
   Max,
@@ -92,7 +98,7 @@ struct IOControl {
           if  (frequency_units == "nmonths") {
             ret = (diff>0) && (diff % frequency == 0);
           }
-        } 
+        }
       } else {
         EKAT_REQUIRE_MSG(false,"Invalid frequency unit of [" + frequency_units + "] for output stream.  Please check that all outputs have frequency_units of\n"
                                "none, never, nsteps, nsecs, nmins, nhours, ndays, nmonths, nyears");
@@ -124,11 +130,17 @@ struct IOFileSpecs {
   bool hist_restart_file         = false;
 };
 
-std::string find_filename_in_rpointer (
-    const std::string& casename,
-    const bool model_restart,
-    const ekat::Comm& comm,
-    const util::TimeStamp& run_t0);
+std::string
+compute_model_restart_filename (const std::string&     prefix,
+                                const util::TimeStamp& timestamp);
+std::string
+compute_model_output_filename (const std::string&     prefix,
+                               const bool             hist_restart,
+                               const OutputAvgType    avg_type,
+                               const IOControl&       io_control,
+                               const util::TimeStamp& timestamp,
+                               const ekat::Comm*      comm = nullptr,
+                               const bool             filename_with_mpiranks = false);
 
 } // namespace scream
 #endif // SCREAM_IO_UTILS_HPP

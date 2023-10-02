@@ -208,7 +208,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
       m_output_control.nsamples_since_last_write = 0;
     } else if (perform_history_restart) {
       using namespace scorpio;
-      auto rhist_file = find_filename_in_rpointer(hist_restart_filename_prefix,false,m_io_comm,m_run_t0);
+      auto rhist_file = compute_model_output_filename(hist_restart_filename_prefix,true,m_avg_type,m_output_control,m_run_t0,m_io_comm,m_output_file_specs.filename_with_mpiranks);
 
       // From restart file, get the time of last write, as well as the current size of the avg sample
       m_output_control.timestamp_of_last_write = read_timestamp(rhist_file,"last_write");
@@ -353,7 +353,7 @@ void OutputManager::run(const util::TimeStamp& timestamp)
   // Create and setup output/checkpoint file(s), if necessary
   start_timer(timer_root+"::get_new_file");
   auto setup_output_file = [&](IOControl& control, IOFileSpecs& filespecs,
-                               bool add_to_rpointer, const std::string& file_type) {
+                               const std::string& file_type) {
     // Check if we need to open a new file
     if (not filespecs.is_open) {
       // If this is normal output, with some sort of average, then the timestamp should be
@@ -367,31 +367,6 @@ void OutputManager::run(const util::TimeStamp& timestamp)
       setup_file(filespecs,control);
     }
 
-    // If we are going to write an output checkpoint file, or a model restart file,
-    // we need to append to the filename ".rhist" or ".r" respectively, and add
-    // the filename to the rpointer.atm file.
-    if (add_to_rpointer && m_io_comm.am_i_root()) {
-      std::ofstream rpointer;
-      if (m_is_model_restart_output) {
-        rpointer.open("rpointer.atm");  // Open rpointer and nuke its content
-      } else if (is_checkpoint_step) {
-        // Output restart unit tests do not have a model-output stream that generates rpointer.atm,
-        // so allow to skip the next check for them.
-        auto is_unit_testing = m_params.sublist("Checkpoint Control").get("is_unit_testing",false);
-        EKAT_REQUIRE_MSG (is_unit_testing || std::ifstream("rpointer.atm").good(),
-            "Error! Cannot find rpointer.atm file to append history restart file in.\n"
-            " Model restart output is supposed to be in charge of creating rpointer.atm.\n"
-            " There are two possible causes:\n"
-            "   1. You have a 'Checkpoint Control' list in your output stream, but no Scorpio::model_restart\n"
-            "      section in the input yaml file. This makes no sense, please correct.\n"
-            "   2. The current implementation assumes that the model restart OutputManager runs\n"
-            "      *before* any other output stream (so it can nuke rpointer.atm if already existing).\n"
-            "      If this has changed, we need to revisit this piece of the code.\n");
-        rpointer.open("rpointer.atm",std::ofstream::app);  // Open rpointer file and append to it
-      }
-      rpointer << filespecs.filename << std::endl;
-    }
-
     if (m_atm_logger) {
       m_atm_logger->info("[EAMxx::output_manager] - Writing " + file_type + ":");
       m_atm_logger->info("[EAMxx::output_manager]      FILE: " + filespecs.filename);
@@ -399,13 +374,13 @@ void OutputManager::run(const util::TimeStamp& timestamp)
   };
 
   if (is_output_step) {
-    setup_output_file(m_output_control,m_output_file_specs,m_is_model_restart_output,m_is_model_restart_output ? "model restart" : "model output");
+    setup_output_file(m_output_control,m_output_file_specs,m_is_model_restart_output ? "model restart" : "model output");
 
     // Update time (must be done _before_ writing fields)
     pio_update_time(m_output_file_specs.filename,timestamp.days_from(m_case_t0));
   }
   if (is_checkpoint_step) {
-    setup_output_file(m_checkpoint_control,m_checkpoint_file_specs,true,"history restart");
+    setup_output_file(m_checkpoint_control,m_checkpoint_file_specs,"history restart");
 
     if (is_full_checkpoint_step) {
       // Update time (must be done _before_ writing fields)

@@ -6,9 +6,7 @@ include (BuildCprnc)
 BuildCprnc()
 
 ## Test io utils
-CreateUnitTest(io_utils "io_utils.cpp" "scream_io" LABELS "io"
-  PROPERTIES RESOURCE_LOCK rpointer_file
-)
+CreateUnitTest(io_utils "io_utils.cpp" "scream_io" LABELS "io")
 
 ## Test basic output (no packs, no diags, all avg types, all freq units)
 CreateUnitTest(io_basic "io_basic.cpp" "scream_io" LABELS "io"
@@ -37,12 +35,10 @@ CreateUnitTest(io_test_se_grid "io_se_grid.cpp" scream_io LABELS "io"
 )
 
 ## Test output restart
-# NOTE: These tests cannot run in parallel due to contention of the rpointer file
 CreateUnitTest(output_restart "output_restart.cpp" scream_io
   LABELS "io"
   MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
   FIXTURES_SETUP_INDIVIDUAL restart_check_setup
-  PROPERTIES RESOURCE_LOCK rpointer_file
 )
 
 # For each avg_type and rank combination, compare the monolithic and restared run
