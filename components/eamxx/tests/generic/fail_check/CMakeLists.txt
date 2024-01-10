@@ -8,20 +8,20 @@ include(ScreamUtils)
 #  - a REQUIRE clause that fails makes the test fail
 #  - Our Create unit test logic does work for  catching failures
 CreateUnitTest (fail "fail.cpp"
-  PROPERTIES WILL_FAIL TRUE
+  WILL_FAIL
   LABELS "fail")
 
 if (Kokkos_ENABLE_DEBUG_BOUNDS_CHECK)
   # Ensure that Kokkos OOB are caught
   CreateUnitTest (kokkos_fail "kokkos_fail.cpp"
-    PROPERTIES WILL_FAIL TRUE
+    WILL_FAIL
     LABELS "fail")
 endif()
 
 if (EKAT_ENABLE_VALGRIND)
   # Ensure that valgrind errors are caught
   EkatCreateUnitTest (valg_fail "valg_fail.cpp"
-    PROPERTIES WILL_FAIL TRUE
+    WILL_FAIL
     LABELS "fail")
 endif()
 
@@ -29,7 +29,7 @@ endif()
 CreateUnitTestExec (scream_fpe_check "fpe_check.cpp")
 if (SCREAM_FPE)
   CreateUnitTestFromExec (scream_fpe_check scream_fpe_check
-    PROPERTIES WILL_FAIL TRUE
+    WILL_FAIL
     LABELS "check")
 else()
   CreateUnitTestFromExec (scream_fpe_check scream_fpe_check
