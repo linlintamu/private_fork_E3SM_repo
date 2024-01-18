@@ -6,9 +6,12 @@ driver_options:
 
 intensive_observation_period_options:
   doubly_periodic_mode: true
-  iop_file: ${IOP_DATA_DIR}/DYCOMSrf01_iopfile_4scam.nc
-  target_latitude: 31.5
-  target_longitude: 238.5
+  #iop_file: ${IOP_DATA_DIR}/DYCOMSrf01_iopfile_4scam.nc
+  iop_file: ${IOP_DATA_DIR}/ARM97_iopfile_4scam.nc
+  #target_latitude: 31.5
+  target_latitude: 36.605
+  #target_longitude: 238.5
+  target_longitude: 262.515
 
 time_stepping:
   time_step: ${ATM_TIME_STEP}
