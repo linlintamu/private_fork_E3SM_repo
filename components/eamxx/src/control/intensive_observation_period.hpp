@@ -148,30 +148,39 @@ private:
 
   // Struct for storing relevant time information
   struct TimeInfo {
+    // TimeStamp for IOP file starting time
     util::TimeStamp iop_file_begin_time;
+
+    // Seconds from IOP file begin time for each IOP file time index
     view_1d_host<int> iop_file_times_in_sec;
 
+    // Time index currently loaded into IOP data
     int time_idx_of_current_data = -1;
 
+    // Return IOP file time index that the given timestamp falls between.
     int get_iop_file_time_idx (const util::TimeStamp& current_ts)
     {
-      // Get iop file time index that the given timestamp falls between.
-      // Note: the last time in iop file represents the non-inclusive
-      //       upper bound of acceptable model times.
+      // Lambda for returning the TimeStamp at each IOP file time index
+      auto time_at_iop_file_index = [&] (const int t_idx) {
+        return iop_file_begin_time + iop_file_times_in_sec(t_idx);
+      };
+
+      EKAT_REQUIRE_MSG(time_at_iop_file_index(0) <= current_ts,
+                       "Error! Current model time ("+current_ts.to_string()+") does not "
+                       "fall after IOP file first time index ("+
+                       time_at_iop_file_index(0).to_string()+")");
+
       const auto n_iop_times = iop_file_times_in_sec.extent(0);
-      int time_idx=-1;
-      for (size_t t=0; t<n_iop_times-1; ++t) {
-        if (iop_file_begin_time + iop_file_times_in_sec(t) <= current_ts &&
-            current_ts < iop_file_begin_time + iop_file_times_in_sec(t+1)) {
-          time_idx = t;
+      for (size_t t=1; t<n_iop_times; ++t) {
+        // If we find an IOP file time which comes after the
+        // current time, return the previous index.
+        if (current_ts < time_at_iop_file_index(t)) {
+          return t-1;
         }
       }
-
-      EKAT_REQUIRE_MSG(time_idx>=0,
-                       "Error! Current model time ("+current_ts.to_string()+") is not within "
-                       "IOP time period: ["+iop_file_begin_time.to_string()+", "+
-                       (iop_file_begin_time+iop_file_times_in_sec(n_iop_times-1)).to_string()+").\n");
-      return time_idx;
+      // If current time is past the last IOP time,
+      // return the last time index.
+      return n_iop_times-1;
     }
   };
 
