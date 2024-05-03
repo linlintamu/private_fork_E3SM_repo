@@ -1035,15 +1035,16 @@ void AtmosphereDriver::set_initial_conditions ()
         // "PHIS_d" on the GLL and Point grids and "PHIS"
         // on the PG2 grid in the topography file.
         if (grid_name == "Physics PG2") {
-          this_grid_topo_file_fnames.push_back("PHIS");
+          // We dont need to load PG2 phis, dynamics
+          // will take care of computing this value
         } else if (grid_name == "Physics GLL" ||
                    grid_name == "Point Grid") {
           this_grid_topo_file_fnames.push_back("PHIS_d");
+          this_grid_topo_eamxx_fnames.push_back(fname);
+          fields_inited[grid_name].push_back(fname);
         } else {
           EKAT_ERROR_MSG ("Error! Requesting phis on an unknown grid: " + grid_name + ".\n");
         }
-        this_grid_topo_eamxx_fnames.push_back(fname);
-	fields_inited[grid_name].push_back(fname);
       } else if (fname == "sgh30") {
         // The eamxx field "sgh30" is called "SGH30" in the
         // topography file and is only available on the PG2 grid.
@@ -1052,7 +1053,7 @@ void AtmosphereDriver::set_initial_conditions ()
                         " topo file only has sgh30 for Physics PG2.\n");
         topography_file_fields_names[grid_name].push_back("SGH30");
         topography_eamxx_fields_names[grid_name].push_back(fname);
-	fields_inited[grid_name].push_back(fname);
+	      fields_inited[grid_name].push_back(fname);
       }
     } else if (not (fvphyshack and grid_name == "Physics PG2")) {
       // The IC file is written for the GLL grid, so we only load
@@ -1064,7 +1065,7 @@ void AtmosphereDriver::set_initial_conditions ()
         // If this field is the parent of other subfields, we only read from file the subfields.
         if (not ekat::contains(this_grid_ic_fnames,fname)) {
           this_grid_ic_fnames.push_back(fname);
-	  fields_inited[grid_name].push_back(fname);
+	        fields_inited[grid_name].push_back(fname);
         }
       } else if (fvphyshack and grid_name == "Physics GLL") {
         // [CGLL ICs in pg2] I tried doing something like this in
@@ -1081,7 +1082,7 @@ void AtmosphereDriver::set_initial_conditions ()
           } else {
             this_grid_ic_fnames.push_back(fname);
           }
-	  fields_inited[grid_name].push_back(fname);
+	        fields_inited[grid_name].push_back(fname);
         }
       }
     }
