@@ -412,6 +412,9 @@ end function shoc_implements_cnst
     call addfld('TOT_CLOUD_FRAC',(/'lev'/), 'A', 'fraction', 'total cloud fraction')
     call addfld('PBLH',horiz_only,'A','m','PBL height')
 
+    !<Lin Lin 2024/5/30, add aist output
+    call addfld('AIST',(/'lev'/), 'A', 'fraction', 'Ice number aware cloud fraction')
+    !>Lin Lin
     call add_default('SHOC_TKE', 1, ' ')
     call add_default('WTHV_SEC', 1, ' ')
     call add_default('SHOC_MIX', 1, ' ')
@@ -1161,6 +1164,9 @@ end function shoc_implements_cnst
     call outfld('TOT_CLOUD_FRAC',tot_cloud_frac,pcols,lchnk)
     call outfld('PBLH',pblh,pcols,lchnk)
 
+    !<Lin Lin 2024/5/30, add aist output
+    call outfld('AIST',aist,pcols,lchnk)
+    !>Lin Lin
 #endif
     return
   end subroutine shoc_tend_e3sm
