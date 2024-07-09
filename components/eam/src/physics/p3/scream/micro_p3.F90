@@ -818,7 +818,11 @@ contains
 
       ! cloud
       call cloud_water_conservation(qc(k), dt, qc2qr_autoconv_tend, qc2qr_accret_tend, qccol, qc2qi_hetero_freeze_tend, &
-           qc2qr_ice_shed_tend, qiberg, qi2qv_sublim_tend, qidep)
+           qc2qr_ice_shed_tend, qiberg, qi2qv_sublim_tend, qidep, &
+           !<Lin Lin 2024/7/2 use separate liq/ice CF, further modify qidep
+           cld_frac_i(k), cld_frac_l(k))
+           !>Lin Lin
+
 
       ! rain
       call rain_water_conservation(qr(k), qc2qr_autoconv_tend, qc2qr_accret_tend, qi2qr_melt_tend, qc2qr_ice_shed_tend, dt, &
@@ -1846,8 +1850,7 @@ contains
     real(rtype),     intent(out)           :: lamr,mu_r,cdistr,logn0r
 
     !local variables:
-    real(rtype)                            :: lammax,lammin
-    real(rtype)                            :: mass_to_d3_factor
+    real(rtype)                            :: inv_dum,lammax,lammin
 
     !--------------------------------------------------------------------------
 
@@ -1859,25 +1862,25 @@ contains
        ! find spot in lookup table
        ! (scaled N/q for lookup table parameter space_
        nr      = max(nr,nsmall)
+       inv_dum = bfb_cbrt(qr/(cons1*nr*6._rtype))
 
        ! Apply constant mu_r:  Recall the switch to v4 tables means constant mu_r
        mu_r = mu_r_constant
-       mass_to_d3_factor = cons1*(mu_r+3._rtype)*(mu_r+2._rtype)*(mu_r+1._rtype)
-       lamr   = bfb_cbrt(mass_to_d3_factor*nr/qr)  ! recalculate slope based on mu_r
+       lamr   = bfb_cbrt(cons1*nr*(mu_r+3._rtype)*(mu_r+2._rtype)*(mu_r+1._rtype)/(qr))  ! recalculate slope based on mu_r
        lammax = (mu_r+1._rtype)*1.e+5_rtype   ! check for slope
        lammin = (mu_r+1._rtype)*500._rtype  !500=1/(2mm) is inverse of max allowed number-weighted mean raindrop diameter
        
        ! apply lambda limiters for rain
        if (lamr.lt.lammin) then
           lamr = lammin
-          nr   = lamr * lamr * lamr * qr / mass_to_d3_factor
+          nr   = bfb_exp(3._rtype*bfb_log(lamr)+bfb_log(qr)+bfb_log(bfb_gamma(mu_r+1._rtype))-bfb_log(bfb_gamma(mu_r+4._rtype)))/(cons1)
        elseif (lamr.gt.lammax) then
           lamr = lammax
-          nr   = lamr * lamr * lamr * qr / mass_to_d3_factor
+          nr   = bfb_exp(3._rtype*bfb_log(lamr)+bfb_log(qr)+bfb_log(bfb_gamma(mu_r+1._rtype))-bfb_log(bfb_gamma(mu_r+4._rtype)))/(cons1)
        endif
 
        cdistr  = nr/bfb_gamma(mu_r+1._rtype)
-       logn0r  = bfb_log10(cdistr)+(mu_r+1._rtype)*bfb_log10(lamr) !note: logn0r is calculated as log10(n0r)
+       logn0r  = bfb_log10(nr)+(mu_r+1._rtype)*bfb_log10(lamr)-bfb_log10(bfb_gamma(mu_r+1._rtype)) !note: logn0r is calculated as log10(n0r)
 
     else
 
@@ -2807,10 +2810,18 @@ subroutine back_to_cell_average(cld_frac_l,cld_frac_r,cld_frac_i,               
    real(rtype), intent(inout) :: nr2ni_immers_freeze_tend, ni_sublim_tend, qinuc, ni_nucleat_tend, qiberg
 
    real(rtype) :: ir_cldm, il_cldm, lr_cldm
+   !<Lin Lin 2024/7/2 use separate liq/ice CF, further modify qidep
+   real(rtype) :: cld_frac_i_not_mixed_phase
+   !>Lin Lin
 
    ir_cldm = min(cld_frac_i,cld_frac_r)  ! Intersection of ICE and RAIN cloud
    il_cldm = min(cld_frac_i,cld_frac_l)  ! Intersection of ICE and LIQUID cloud
    lr_cldm = min(cld_frac_l,cld_frac_r)  ! Intersection of LIQUID and RAIN cloud
+
+   !<Lin Lin 2024/7/2 use separate liq/ice CF, further modify qidep
+   ! this is pure ice cloud region
+   cld_frac_i_not_mixed_phase = cld_frac_i - il_cldm
+   !>Lin Lin
 
    ! Some process rates take place within the intersection of liquid, rain and ice cloud fractions.
    ! We calculate the intersection as the minimum between combinations of cloud fractions and use
@@ -2828,7 +2839,10 @@ subroutine back_to_cell_average(cld_frac_l,cld_frac_r,cld_frac_i,               
    ncautr  = ncautr*lr_cldm    ! Autoconversion of rain drops within rain/liq cloud
 
    ! map ice-phase  process rates to cell-avg
-   qi2qv_sublim_tend   = qi2qv_sublim_tend*cld_frac_i       ! Sublimation of ice in ice cloud
+   !<Lin Lin 2024/7/2 use separate liq/ice CF, further modify qidep
+   !qi2qv_sublim_tend   = qi2qv_sublim_tend*cld_frac_i       ! Sublimation of ice in ice cloud
+   qi2qv_sublim_tend   = qi2qv_sublim_tend*cld_frac_i_not_mixed_phase
+   !>Lin Lin
    nr_ice_shed_tend  = nr_ice_shed_tend*il_cldm    ! Rain # increase due to shedding from rain-ice collisions, occurs when ice and liquid interact
    qc2qi_hetero_freeze_tend  = qc2qi_hetero_freeze_tend*il_cldm    ! Immersion freezing of cloud drops
    qrcol   = qrcol*ir_cldm     ! Collection of rain mass by ice
@@ -2842,7 +2856,10 @@ subroutine back_to_cell_average(cld_frac_l,cld_frac_r,cld_frac_i,               
    nc2ni_immers_freeze_tend  = nc2ni_immers_freeze_tend*cld_frac_l      ! Number change associated with freexzing of cld drops
    nr_collect_tend   = nr_collect_tend*ir_cldm     ! Rain number change due to collection from ice
    ni_selfcollect_tend   = ni_selfcollect_tend*cld_frac_i       ! Ice self collection
-   qidep   = qidep*cld_frac_i       ! Vapor deposition to ice phase
+   !<Lin Lin 2024/7/2 use separate liq/ice CF, further modify qidep
+   !qidep   = qidep*cld_frac_i       ! Vapor deposition to ice phase
+   qidep   = qidep*cld_frac_i_not_mixed_phase
+   !>Lin Lin
    nr2ni_immers_freeze_tend  = nr2ni_immers_freeze_tend*cld_frac_r      ! Change in number due to immersion freezing of rain
    ni_sublim_tend   = ni_sublim_tend*cld_frac_i       ! Number change due to sublimation of ice
    qiberg  = qiberg*il_cldm    ! Bergeron process
@@ -3025,14 +3042,26 @@ subroutine ni_conservation(ni, ni_nucleat_tend, nr2ni_immers_freeze_tend, nc2ni_
 end subroutine ni_conservation
 
 subroutine cloud_water_conservation(qc,dt,    &
-   qc2qr_autoconv_tend,qc2qr_accret_tend,qccol,qc2qi_hetero_freeze_tend,qc2qr_ice_shed_tend,qiberg,qi2qv_sublim_tend,qidep)
+   qc2qr_autoconv_tend,qc2qr_accret_tend,qccol,qc2qi_hetero_freeze_tend,qc2qr_ice_shed_tend,qiberg,qi2qv_sublim_tend,qidep, &
+   !<Lin Lin 2024/7/2 use separate liq/ice CF, further modify qidep
+   cld_frac_i, cld_frac_l)
+   !>Lin Lin
 
    implicit none
 
    real(rtype), intent(in) :: qc, dt
+   !<Lin Lin 2024/7/2 use separate liq/ice CF, further modify qidep
+   real(rtype), intent(in) :: cld_frac_i, cld_frac_l
+   !>Lin Lin
    real(rtype), intent(inout) :: qc2qr_autoconv_tend, qc2qr_accret_tend, qccol, qc2qi_hetero_freeze_tend, qc2qr_ice_shed_tend, &
    qiberg, qi2qv_sublim_tend, qidep
    real(rtype) :: sinks, ratio
+   !<Lin Lin 2024/7/2 use separate liq/ice CF, further modify qidep
+   real(rtype) :: cld_frac_i_not_mixed_phase, il_cldm
+
+   il_cldm = min(cld_frac_i, cld_frac_l)
+   cld_frac_i_not_mixed_phase = max(cld_frac_i - il_cldm, 0.0001)
+   !>Lin Lin
 
    sinks   = (qc2qr_autoconv_tend+qc2qr_accret_tend+qccol+qc2qi_hetero_freeze_tend+qc2qr_ice_shed_tend+qiberg)*dt
    if (sinks .gt. qc .and. sinks.ge.1.e-20_rtype) then
@@ -3052,8 +3081,12 @@ subroutine cloud_water_conservation(qc,dt,    &
    !remaining frac of the timestep.  Only limit if there will be cloud
    !water to begin with.
    if (qc .gt. 1.e-20_rtype) then
-      qidep  = qidep*(1._rtype-ratio)
-      qi2qv_sublim_tend  = qi2qv_sublim_tend*(1._rtype-ratio)
+      !<Lin Lin 2024/7/2 use separate liq/ice CF, further modify qidep
+      !qidep  = qidep*(1._rtype-ratio)
+      !qi2qv_sublim_tend  = qi2qv_sublim_tend*(1._rtype-ratio)
+      qidep  = qidep + qidep*(1._rtype-ratio)*(il_cldm/cld_frac_i_not_mixed_phase)
+      qi2qv_sublim_tend  = qi2qv_sublim_tend + qi2qv_sublim_tend*(1._rtype-ratio)*(il_cldm/cld_frac_i_not_mixed_phase)
+      !>Lin Lin
    end if
 
 
